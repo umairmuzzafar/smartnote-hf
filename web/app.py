@@ -16,15 +16,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-def load_model(model_name: str) -> Tuple[Optional[AutoModelForSeq2SeqLM], Optional[AutoTokenizer], str]:
+def load_model() -> Tuple[Optional[AutoModelForSeq2SeqLM], Optional[AutoTokenizer], str]:
     try:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         st.info(f"Using device: {device}")
         
-        # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        # Using BART model which is more stable
+        model_name = "facebook/bart-large-cnn"
         
-        # Load model with appropriate settings
+        # Load tokenizer and model
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForSeq2SeqLM.from_pretrained(
             model_name,
             device_map="auto" if torch.cuda.is_available() else None
@@ -67,22 +68,18 @@ if 'model' not in st.session_state:
 st.set_page_config(page_title="SmartNote HF", page_icon="📝", layout="wide")
 
 st.title("📝 SmartNote HF")
-st.markdown("### AI-Powered Text Summarization Tool")
+st.markdown("### AI-Powered Text Summarization Tool (BART Model)")
 
 # Sidebar
 with st.sidebar:
     st.header("⚙️ Settings")
-    model_name = st.selectbox(
-        "Select Model",
-        ["facebook/bart-large-cnn", "google/pegasus-xsum"],
-        help="BART for general purpose, Pegasus for extreme summarization"
-    )
     
+    # Load model button
     if st.button("Load Model"):
-        with st.spinner(f"Loading {model_name} (this may take a few minutes for first load)..."):
-            st.session_state.model, st.session_state.tokenizer, st.session_state.device = load_model(model_name)
+        with st.spinner("Loading BART model (this may take a minute for first load)..."):
+            st.session_state.model, st.session_state.tokenizer, st.session_state.device = load_model()
             if st.session_state.model:
-                st.success(f"✅ {model_name} loaded successfully!")
+                st.success("✅ BART model loaded successfully!")
             else:
                 st.error("Failed to load model")
 
@@ -136,10 +133,9 @@ with col2:
 st.markdown("---")
 st.markdown("### How to Use")
 st.markdown("""
-1. Select a model and click "Load Model"
-2. Wait for the model to load (you'll see a success message)
-3. Paste your text in the input box
-4. Adjust the summary length using the sliders
-5. Click 'Generate Summary'
-6. View, copy, or download your summary
+1. Click "Load Model" (only needed once per session)
+2. Paste your text in the input box
+3. Adjust the summary length using the sliders
+4. Click 'Generate Summary'
+5. View, copy, or download your summary
 """)
