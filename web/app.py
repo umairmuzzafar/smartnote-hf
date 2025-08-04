@@ -4,37 +4,14 @@ import torch
 import time
 from typing import Tuple, Optional
 
-# Set page config first
-st.set_page_config(
-    page_title="SmartNote HF",
-    page_icon="��",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# Custom CSS to fix text visibility and improve UI
+# Minimal CSS fix for text visibility
 st.markdown("""
     <style>
-        .stApp {
-            background-color: #f8f9fa;
-        }
         .stTextArea textarea {
-            color: #333333 !important;
+            color: #000000 !important;
         }
         .stTextInput input {
-            color: #333333 !important;
-        }
-        .stButton>button {
-            width: 100%;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .stButton>button:disabled {
-            background-color: #cccccc;
+            color: #000000 !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -50,8 +27,7 @@ def load_model(model_name: str) -> Tuple[Optional[AutoModelForSeq2SeqLM], Option
         # Load model with appropriate settings
         model = AutoModelForSeq2SeqLM.from_pretrained(
             model_name,
-            device_map="auto" if torch.cuda.is_available() else None,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+            device_map="auto" if torch.cuda.is_available() else None
         )
         
         if not torch.cuda.is_available():
@@ -88,6 +64,8 @@ if 'model' not in st.session_state:
     st.session_state.summary = ""
 
 # UI
+st.set_page_config(page_title="SmartNote HF", page_icon="📝", layout="wide")
+
 st.title("📝 SmartNote HF")
 st.markdown("### AI-Powered Text Summarization Tool")
 
@@ -96,7 +74,7 @@ with st.sidebar:
     st.header("⚙️ Settings")
     model_name = st.selectbox(
         "Select Model",
-        ["facebook/bart-large-cnn", "google/pegasus-cnn_dailymail"],
+        ["facebook/bart-large-cnn", "google/pegasus-xsum"],
         help="BART for general purpose, Pegasus for extreme summarization"
     )
     
@@ -144,7 +122,7 @@ with col1:
 with col2:
     st.subheader("Summary")
     if st.session_state.summary:
-        st.text_area("Generated Summary", st.session_state.summary, height=300, key="summary_output")
+        st.text_area("Generated Summary", st.session_state.summary, height=300)
         if st.download_button(
             label="Download Summary",
             data=st.session_state.summary,
