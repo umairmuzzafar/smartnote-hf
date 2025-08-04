@@ -16,19 +16,24 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-def load_model() -> Tuple[Optional[AutoModelForSeq2SeqLM], Optional[AutoTokenizer], str]:
+@st.cache_resource(show_spinner="Loading BART model (this may take a minute for first load)...")
+def load_model():
     try:
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        st.info(f"Using device: {device}")
         
-        # Using BART model which is more stable
+        # Using a smaller BART model variant
         model_name = "facebook/bart-large-cnn"
+        
+        # Clear CUDA cache if available
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
         # Load tokenizer and model
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForSeq2SeqLM.from_pretrained(
             model_name,
-            device_map="auto" if torch.cuda.is_available() else None
+            device_map="auto" if torch.cuda.is_available() else None,
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
         )
         
         if not torch.cuda.is_available():
@@ -58,33 +63,21 @@ def generate_summary(model, tokenizer, device: str, text: str, max_length: int, 
         raise Exception(f"Error generating summary: {str(e)}")
 
 # Initialize session state
-if 'model' not in st.session_state:
-    st.session_state.model = None
-    st.session_state.tokenizer = None
-    st.session_state.device = ""
+if 'summary' not in st.session_state:
     st.session_state.summary = ""
+
+# Load model automatically
+model, tokenizer, device = load_model()
 
 # UI
 st.set_page_config(page_title="SmartNote HF", page_icon="📝", layout="wide")
 
 st.title("📝 SmartNote HF")
-st.markdown("### AI-Powered Text Summarization Tool (BART Model)")
+st.markdown("### AI-Powered Text Summarization Tool")
 
 # Sidebar
 with st.sidebar:
-    st.header("⚙️ Settings")
-    
-    # Load model button
-    if st.button("Load Model"):
-        with st.spinner("Loading BART model (this may take a minute for first load)..."):
-            st.session_state.model, st.session_state.tokenizer, st.session_state.device = load_model()
-            if st.session_state.model:
-                st.success("✅ BART model loaded successfully!")
-            else:
-                st.error("Failed to load model")
-
-    st.markdown("---")
-    st.markdown("### Summary Settings")
+    st.header("⚙️ Summary Settings")
     max_length = st.slider("Max Length", 50, 500, 150)
     min_length = st.slider("Min Length", 10, 200, 30)
 
@@ -96,20 +89,19 @@ with col1:
     input_text = st.text_area("Paste your text here", height=300, 
                             placeholder="Enter the text you want to summarize...")
     
-    if st.button("Generate Summary", disabled=st.session_state.model is None):
+    if st.button("Generate Summary", disabled=model is None):
         if input_text.strip():
             with st.spinner("Generating summary..."):
                 try:
                     start_time = time.time()
-                    summary = generate_summary(
-                        st.session_state.model,
-                        st.session_state.tokenizer,
-                        st.session_state.device,
+                    st.session_state.summary = generate_summary(
+                        model,
+                        tokenizer,
+                        device,
                         input_text,
                         max_length,
                         min_length
                     )
-                    st.session_state.summary = summary
                     st.success(f"Summary generated in {time.time() - start_time:.2f} seconds")
                 except Exception as e:
                     st.error(str(e))
@@ -133,9 +125,8 @@ with col2:
 st.markdown("---")
 st.markdown("### How to Use")
 st.markdown("""
-1. Click "Load Model" (only needed once per session)
-2. Paste your text in the input box
-3. Adjust the summary length using the sliders
-4. Click 'Generate Summary'
-5. View, copy, or download your summary
+1. Paste your text in the input box
+2. Adjust the summary length using the sliders
+3. Click 'Generate Summary'
+4. View, copy, or download your summary
 """)
